@@ -21,5 +21,5 @@ from rest_framework import routers
 urlpatterns = [
     path('admin/', admin.site.urls),
     # path('api/', include('MenuItemApp.urls')),
-    path('api/', include('cartAndOrderApp.urls')),
+    path('api/', include('shopapp.urls')),
 ]
