@@ -13,3 +13,6 @@ class MenuItem(models.Model):
     featured = models.BooleanField(db_index=True)
     category = models.ForeignKey(to=Category, on_delete=models.PROTECT)
     objects = models.Manager()
+
+    def __str__(self):
+        return self.title
