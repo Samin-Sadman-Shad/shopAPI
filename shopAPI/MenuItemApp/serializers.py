@@ -5,12 +5,14 @@ from .models import MenuItem, Category
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Category
-        fields = ['title']
+        read_only_fields = ['id']
+        fields = ['id', 'title']
 
 
 class MenuItemSerializer(serializers.ModelSerializer):
-    category = CategorySerializer()
+    category_id = serializers.IntegerField(write_only=True)
+    category = CategorySerializer(read_only=True)
 
     class Meta:
         model = MenuItem
-        fields = ['title', 'price', 'featured', 'category']
+        fields = ['title', 'price', 'featured', 'category', 'category_id']
