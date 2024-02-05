@@ -11,7 +11,7 @@ class CategorySerializer(serializers.ModelSerializer):
 
 
 class MenuItemSerializer(serializers.ModelSerializer):
-    category_id = serializers.IntegerField(write_only=True)
+    category_id = serializers.IntegerField()
     category = CategorySerializer(read_only=True)
 
     class Meta:
