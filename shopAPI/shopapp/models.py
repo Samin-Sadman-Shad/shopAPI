@@ -15,8 +15,8 @@ class MenuItem(models.Model):
     category = models.ForeignKey(to=Category, on_delete=models.PROTECT)
     objects = models.Manager()
 
-    def __str__(self):
-        return self.title
+    # def __str__(self):
+    #     return self.title
 
 
 class Cart(models.Model):

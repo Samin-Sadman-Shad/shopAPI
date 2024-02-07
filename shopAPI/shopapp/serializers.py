@@ -11,8 +11,9 @@ class CategorySerializer(serializers.ModelSerializer):
 
 
 class MenuItemSerializer(serializers.ModelSerializer):
-    category_id = serializers.IntegerField()
+    category_id = serializers.IntegerField(write_only=True)
     category = CategorySerializer(read_only=True)
+
 
     class Meta:
         model = MenuItem
@@ -22,7 +23,7 @@ class MenuItemSerializer(serializers.ModelSerializer):
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['username', 'email', 'id']
+        fields = ['id', 'username', 'email', 'id']
 
 
 class CartSerializer(serializers.ModelSerializer):

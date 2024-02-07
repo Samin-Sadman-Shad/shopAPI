@@ -36,14 +36,38 @@ class OrderItemView(generics.ListCreateAPIView):
 
 
 class CartMenuItemView(generics.ListCreateAPIView, generics.DestroyAPIView, generics.UpdateAPIView):
-    queryset = Cart.objects.all()
+    # queryset = Cart.objects.all()
     serializer_class = CartSerializer
     # permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
         items = Cart.objects.values("menu_item")
         return items
+        # user = self.request.user
+        # return Cart.objects.filter(user=user)
 
-    # def perform_update(self, serializer):
-    #     instance = self.get_object()
-    #     self.request.data.get("menu-item")
+    def perform_update(self, serializer):
+        user = self.request.user
+        instance = self.get_object()
+        menu_item_id = self.request.data.get("menu_item_id")
+        menu_item = MenuItem.objects.get(id=menu_item_id)
+        quantity = self.request.data.get("quantity", 1)
+        unit_price = menu_item.price
+
+        other_cart_items = Cart.objects.filter(user=user).exclude(id=serializer.instance.id)
+        total_price = sum(item.total_price for item in other_cart_items) + unit_price * quantity
+
+        cart_data = {
+            'user': user.id,
+            'menu_item': menu_item_id,
+            'quantity': quantity,
+            'unit_price': unit_price,
+            'total_price': total_price,
+        }
+
+        serializer.save(**cart_data)
+
+
+class CartView(generics.ListCreateAPIView):
+    queryset = Cart.objects.all()
+    serializer_class = CartSerializer
