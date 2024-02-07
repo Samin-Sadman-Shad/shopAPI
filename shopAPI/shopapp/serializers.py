@@ -33,7 +33,7 @@ class CartSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Cart
-        fields = ['id', 'user', 'menu_item_id', 'menu-item', 'quantity', 'unit_price', 'total_price']
+        fields = ['id', 'user_id', 'user', 'menu_item_id', 'menu_item', 'quantity', 'unit_price', 'total_price']
 
 
 class OrderSerializer(serializers.ModelSerializer):
@@ -44,7 +44,7 @@ class OrderSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Order
-        fields = ['id', 'user', 'delivery_crew', 'status', 'total_price', 'date', 'user_id', 'delivery_crew_id']
+        fields = ['id', 'user_id', 'user', 'delivery_crew', 'status', 'total_price', 'date', 'user_id', 'delivery_crew_id']
 
 
 class OrderItemSerializer(serializers.ModelSerializer):

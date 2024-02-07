@@ -6,6 +6,7 @@ from shopapp.serializers import MenuItemSerializer, CategorySerializer, OrderIte
 from .filters import MenuItemFilterSet
 
 from django_filters import rest_framework as filters
+from rest_framework.permissions import IsAuthenticated, IsAdminUser
 
 
 # Create your views here.
@@ -32,3 +33,17 @@ class CategoryView(generics.ListCreateAPIView):
 class OrderItemView(generics.ListCreateAPIView):
     queryset = OrderItem.objects.all()
     serializer_class = OrderItemSerializer
+
+
+class CartMenuItemView(generics.ListCreateAPIView, generics.DestroyAPIView, generics.UpdateAPIView):
+    queryset = Cart.objects.all()
+    serializer_class = CartSerializer
+    # permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        items = Cart.objects.values("menu_item")
+        return items
+
+    # def perform_update(self, serializer):
+    #     instance = self.get_object()
+    #     self.request.data.get("menu-item")
