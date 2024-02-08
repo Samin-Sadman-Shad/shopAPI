@@ -2,11 +2,14 @@ from django.shortcuts import render
 from rest_framework import generics
 
 from shopapp.models import MenuItem, Category, OrderItem, Cart, Order
-from shopapp.serializers import MenuItemSerializer, CategorySerializer, OrderItemSerializer, CartSerializer, OrderSerializer, UserSerializer
+from shopapp.serializers import MenuItemSerializer, CategorySerializer, OrderItemSerializer, CartSerializer, \
+    OrderSerializer, UserSerializer, CartMenuItemUpdateSerializer
 from .filters import MenuItemFilterSet
 
 from django_filters import rest_framework as filters
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
+from rest_framework.response import Response
+from rest_framework import status
 
 
 # Create your views here.
@@ -35,16 +38,25 @@ class OrderItemView(generics.ListCreateAPIView):
     serializer_class = OrderItemSerializer
 
 
-class CartMenuItemView(generics.ListCreateAPIView, generics.DestroyAPIView, generics.UpdateAPIView):
+class CartMenuItemView(generics.ListAPIView, generics.DestroyAPIView, generics.UpdateAPIView):
     # queryset = Cart.objects.all()
-    serializer_class = CartSerializer
+    serializer_class = CartMenuItemUpdateSerializer
+
     # permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        items = Cart.objects.values("menu_item")
+        items = Cart.objects.select_related("menu_item")
         return items
         # user = self.request.user
         # return Cart.objects.filter(user=user)
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        serializer = self.get_serializer(queryset, many=True)
+
+        menu_items_data = [{'menu_item': item['menu_item']} for item in serializer.data]
+
+        return Response(menu_items_data)
 
     def perform_update(self, serializer):
         user = self.request.user
@@ -66,6 +78,21 @@ class CartMenuItemView(generics.ListCreateAPIView, generics.DestroyAPIView, gene
         }
 
         serializer.save(**cart_data)
+
+    def partial_update(self, request, *args, **kwargs):
+        request_data = {k: v for k, v in request.data.items() if k == 'menu_item_id'}
+        kwargs['partial'] = True
+        kwargs['data'] = request_data
+
+        return super().partial_update(request, *args, **kwargs)
+
+    # def get_serializer_class(self, *args, **kwargs):
+    #     fields = ['menu_item_id']
+    #     if self.request.method == 'PATCH' and 'data' in kwargs:
+    #         data = kwargs['data']
+    #         data = {k: v for k, v in data.items() if k in fields}
+    #         kwargs['data'] = data
+    #     return super().get_serializer(*args, **kwargs)
 
 
 class CartView(generics.ListCreateAPIView):
