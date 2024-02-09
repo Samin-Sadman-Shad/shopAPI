@@ -22,6 +22,8 @@ class MenuItemsView(generics.ListCreateAPIView, generics.UpdateAPIView, generics
     # filterset_fields = ['category', 'title', 'price']
     filterset_class = MenuItemFilterSet
     search_fields = ["title", "price"]
+    ordering_fields = ['price', 'id']
+    ordering = ["price"]
     permission_classes = []
 
     # def checkAdmin(self, request, code: int):
@@ -32,7 +34,8 @@ class MenuItemsView(generics.ListCreateAPIView, generics.UpdateAPIView, generics
 
     def list(self, request, *args, **kwargs):
         self.permission_classes = []
-        serialized_item = MenuItemSerializer(self.get_queryset(), many=True)
+        # serialized_item = MenuItemSerializer(self.get_queryset(), many=True)
+        serialized_item = MenuItemSerializer(self.filter_queryset(self.get_queryset()), many=True)
         return Response(serialized_item.data, status=status.HTTP_200_OK)
 
     def create(self, request, *args, **kwargs):
