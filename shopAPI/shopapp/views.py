@@ -41,7 +41,7 @@ class MenuItemsView(generics.ListCreateAPIView, generics.UpdateAPIView, generics
             serialized_item = MenuItemSerializer(data=request.data)
             serialized_item.is_valid(raise_exception=True)
             serialized_item.save()
-            return Response({'success': 'true', 'message': 'new menu item created successfully'},
+            return Response({'success': 'true', 'message': 'new menu item created successfully', 'data':serialized_item.data},
                             status=status.HTTP_201_CREATED)
         else:
             return Response({'success': 'false', 'message': 'user is not authorized to perform the action'},
@@ -92,11 +92,11 @@ class SingleMenuItemView(generics.RetrieveUpdateDestroyAPIView):
         if request.user.groups.filter(name="Manager").exists():
             pk = kwargs.get('pk')
             item = get_object_or_404(MenuItem, pk=pk)
-            serialized_item = MenuItemSerializer(data=request.data)
+            serialized_item = MenuItemSerializer(item, data=request.data)
             serialized_item.is_valid(raise_exception=True)
             serialized_item.save()
-            return Response({'success': 'true', 'message': 'new menu item updated successfully'},
-                            status=status.HTTP_201_CREATED)
+            return Response({'success': 'true', 'message': 'new menu item updated successfully', 'data': serialized_item.data},
+                            status=status.HTTP_200_OK)
         else:
             return Response({'success': 'false', 'message': 'user is not authorized to perform the action'},
                             status=status.HTTP_403_FORBIDDEN)
@@ -104,8 +104,13 @@ class SingleMenuItemView(generics.RetrieveUpdateDestroyAPIView):
     def partial_update(self, request, *args, **kwargs):
         self.permission_classes = [IsAuthenticated]
         if request.user.groups.filter(name="Manager").exists():
-            return Response({'success': 'true', 'message': 'new menu item updated successfully'},
-                            status=status.HTTP_201_CREATED)
+            pk = kwargs.get('pk')
+            item = get_object_or_404(MenuItem, pk=pk)
+            serialized_item = MenuItemSerializer(item, data=request.data, partial=True)
+            serialized_item.is_valid(raise_exception=True)
+            serialized_item.save()
+            return Response({'success': 'true', 'message': 'new menu item updated successfully', 'data':serialized_item.data},
+                            status=status.HTTP_200_OK)
         else:
             return Response({'success': 'false', 'message': 'user is not authorized to perform the action'},
                             status=status.HTTP_403_FORBIDDEN)
@@ -113,8 +118,11 @@ class SingleMenuItemView(generics.RetrieveUpdateDestroyAPIView):
     def delete(self, request, *args, **kwargs):
         self.permission_classes = [IsAuthenticated]
         if request.user.groups.filter(name="Manager").exists():
+            pk = kwargs.get('pk')
+            item = get_object_or_404(MenuItem, pk=pk)
+            item.delete()
             return Response({'success': 'true', 'message': 'menu item deleted successfully'},
-                            status=status.HTTP_201_CREATED)
+                            status=status.HTTP_204_NO_CONTENT)
         else:
             return Response({'success': 'false', 'message': 'user is not authorized to perform the action'},
                             status=status.HTTP_403_FORBIDDEN)
