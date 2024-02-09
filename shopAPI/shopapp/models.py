@@ -20,6 +20,8 @@ class MenuItem(models.Model):
 
 
 class Cart(models.Model):
+    # every user can have multiple cart
+    # every cart can have multiple menu_items
     user = models.ForeignKey(to=User, on_delete=models.CASCADE)
     menu_item = models.ForeignKey(to=MenuItem, on_delete=models.CASCADE)
     quantity = models.SmallIntegerField()
@@ -32,6 +34,7 @@ class Cart(models.Model):
 
 
 class Order(models.Model):
+    # every user can have multiple order
     user = models.ForeignKey(to=User, on_delete=models.CASCADE)
     delivery_crew = models.ForeignKey(to=User, on_delete=models.SET_NULL, related_name="delivery_crew", null=True)
     status = models.BooleanField(db_index=True)
@@ -41,6 +44,7 @@ class Order(models.Model):
 
 
 class OrderItem(models.Model):
+    # every order can contain multiple order item
     order = models.ForeignKey(to=Order, on_delete=models.CASCADE)
     menu_item = models.ForeignKey(to=MenuItem, on_delete=models.CASCADE)
     quantity = models.SmallIntegerField()

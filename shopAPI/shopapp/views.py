@@ -1,3 +1,6 @@
+from datetime import date
+from decimal import Decimal
+
 from django.shortcuts import render
 from rest_framework import generics
 from rest_framework.generics import get_object_or_404
@@ -12,6 +15,7 @@ from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework.response import Response
 from rest_framework import status
 from django.contrib.auth.models import User, Group
+from django.db.models import Q
 
 
 # Create your views here.
@@ -141,9 +145,76 @@ class CategorySingleView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = CategorySerializer
 
 
-class OrderItemView(generics.ListCreateAPIView):
-    queryset = OrderItem.objects.all()
-    serializer_class = OrderItemSerializer
+class OrdersView(generics.ListCreateAPIView):
+    serializer_class = OrderSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        if self.request.user.is_superuser or self.request.groups.filter(name="Manager").exists():
+            query = OrderItem.objects.all()
+        elif self.request.user.groups.filter(name="Delivery crew").exists():
+            query = OrderItem.objects.filter(delivery_crew=self.request.user)
+        else:
+            query = OrderItem.objects.filter(user=self.request.user)
+        return query
+
+    def create(self, request, *args, **kwargs):
+        if not request.user.groups.count() == 0:
+            cart_items = Cart.objects.filter(user=request.user)
+            total = self.calculate_total(cart_items)
+            order = Order.objects.create(user=request.user, status=False, total_price= total, date=date.today())
+            #place every cart item to order item, and remove the card item
+            for cart_item in cart_items.values():
+                menu_item = get_object_or_404(MenuItem, id=cart_item['menu_item_id'])
+                order_item = OrderItem.objects.create(order=order, menu_item=menu_item, quantity=cart_item['quantity'],
+                                                      unit_price=cart_item['unit_price'], total_price=cart_item['total_price'])
+                order_item.save()
+            cart_items.delete()
+            return Response({'success': 'true',
+                              'message':'Your order has been placed with {} order number'.format(str(order.id))},
+                            status=status.HTTP_201_CREATED)
+        return Response(status=status.HTTP_403_FORBIDDEN)
+
+
+
+    def calculate_total(self, cart_items):
+        total = Decimal(0)
+        for item in cart_items:
+            total += item.price
+        return total
+
+
+class SingleOrderView(generics.RetrieveUpdateDestroyAPIView):
+    serializer_class = OrderSerializer
+    permission_classes = [IsAuthenticated]
+
+
+    def retrieve(self, request, *args, **kwargs):
+        pk = kwargs['pk']
+        order = Order.objects.get(pk=pk)
+        if request.user == order.user:
+            order_items = OrderItem.objects.filter(order=kwargs['order_id'])
+            serialized_item = OrderItemSerializer(order_items, many=True)
+            return Response(serialized_item.data)
+        return Response(status=status.HTTP_403_FORBIDDEN)
+
+
+    def update(self, request, *args, **kwargs):
+        if request.user.groups.filter("Manager").exists():
+            pk = kwargs['pk']
+            #order = Order.objects.get(pk=pk)
+            order = get_object_or_404(Order, pk=pk)
+            order.status = not order.status
+            delivery_crew_pk = request.data['delivery_crew']
+            delivery_crew = get_object_or_404(User, pk=delivery_crew_pk)
+            order.delivery_crew = delivery_crew
+            serialized_item = OrderSerializer(Order, request.data)
+            serialized_item.is_valid(raise_exception=True)
+            serialized_item.save()
+            return Response(serialized_item.data, status=status.HTTP_201_CREATED)
+        elif request.user.groups.filter("Deliver crew").exists():
+            pass
+
 
 
 class CartMenuItemView(generics.ListAPIView, generics.DestroyAPIView, generics.UpdateAPIView):
