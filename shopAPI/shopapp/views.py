@@ -10,17 +10,58 @@ from django_filters import rest_framework as filters
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework.response import Response
 from rest_framework import status
+from django.contrib.auth.models import User, Group
 
 
 # Create your views here.
-class MenuItemsView(generics.ListCreateAPIView):
+class MenuItemsView(generics.ListCreateAPIView, generics.UpdateAPIView, generics.DestroyAPIView):
     queryset = MenuItem.objects.all()
     serializer_class = MenuItemSerializer
     filter_backends = [filters.DjangoFilterBackend]
-    # filter this endpoint with following fields
     # filterset_fields = ['category', 'title', 'price']
     filterset_class = MenuItemFilterSet
-    # search_fields = ["title", "price"]
+    search_fields = ["title", "price"]
+    permission_classes = []
+
+    # def checkAdmin(self, request, code: int):
+    #     if request.user.group == "Manager":
+    #         return Response(status=code)
+    #     else:
+    #         return Response(status=status.HTTP_403_FORBIDDEN)
+
+    def list(self, request, *args, **kwargs):
+        self.permission_classes = []
+        return Response(status=status.HTTP_200_OK)
+
+    def create(self, request, *args, **kwargs):
+        self.permission_classes = [IsAuthenticated]
+        if request.user.groups.filter(name="Manager").exists():
+            return Response({'success': 'true', 'message': 'new menu item created successfully'},
+                            status=status.HTTP_201_CREATED)
+        else:
+            return Response({'success': 'false', 'message': 'user is not authorized to perform the action'},
+                            status=status.HTTP_403_FORBIDDEN)
+
+    def update(self, request, *args, **kwargs):
+        permission_classes = [IsAdminUser]
+        if request.user.group == "Manager":
+            return Response(status=status.HTTP_200_OK)
+        else:
+            return Response(status=status.HTTP_403_FORBIDDEN)
+
+    def partial_update(self, request, *args, **kwargs):
+        permission_classes = [IsAdminUser]
+        if request.user.group == "Manager":
+            return Response(status=status.HTTP_200_OK)
+        else:
+            return Response(status=status.HTTP_403_FORBIDDEN)
+
+    def delete(self, request, *args, **kwargs):
+        permission_classes = [IsAdminUser]
+        if request.user.group == "Manager":
+            return Response(status=status.HTTP_200_OK)
+        else:
+            return Response(status=status.HTTP_403_FORBIDDEN)
 
 
 class SingleMenuItemView(generics.RetrieveUpdateDestroyAPIView):
@@ -29,6 +70,11 @@ class SingleMenuItemView(generics.RetrieveUpdateDestroyAPIView):
 
 
 class CategoryView(generics.ListCreateAPIView):
+    queryset = Category.objects.all()
+    serializer_class = CategorySerializer
+
+
+class CategorySingleView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
 
@@ -46,6 +92,7 @@ class CartMenuItemView(generics.ListAPIView, generics.DestroyAPIView, generics.U
 
     def get_queryset(self):
         items = Cart.objects.select_related("menu_item")
+
         return items
         # user = self.request.user
         # return Cart.objects.filter(user=user)
@@ -98,3 +145,11 @@ class CartMenuItemView(generics.ListAPIView, generics.DestroyAPIView, generics.U
 class CartView(generics.ListCreateAPIView):
     queryset = Cart.objects.all()
     serializer_class = CartSerializer
+
+
+class ManagerView(generics.ListCreateAPIView):
+    pass
+
+
+class ManagerRemoveUserView(generics.DestroyAPIView):
+    pass
