@@ -1,5 +1,6 @@
 from django.shortcuts import render
 from rest_framework import generics
+from rest_framework.generics import get_object_or_404
 
 from shopapp.models import MenuItem, Category, OrderItem, Cart, Order
 from shopapp.serializers import MenuItemSerializer, CategorySerializer, OrderItemSerializer, CartSerializer, \
@@ -31,11 +32,15 @@ class MenuItemsView(generics.ListCreateAPIView, generics.UpdateAPIView, generics
 
     def list(self, request, *args, **kwargs):
         self.permission_classes = []
-        return Response(status=status.HTTP_200_OK)
+        serialized_item = MenuItemSerializer(self.get_queryset(), many=True)
+        return Response(serialized_item.data, status=status.HTTP_200_OK)
 
     def create(self, request, *args, **kwargs):
         self.permission_classes = [IsAuthenticated]
         if request.user.groups.filter(name="Manager").exists():
+            serialized_item = MenuItemSerializer(data=request.data)
+            serialized_item.is_valid(raise_exception=True)
+            serialized_item.save()
             return Response({'success': 'true', 'message': 'new menu item created successfully'},
                             status=status.HTTP_201_CREATED)
         else:
@@ -43,30 +48,76 @@ class MenuItemsView(generics.ListCreateAPIView, generics.UpdateAPIView, generics
                             status=status.HTTP_403_FORBIDDEN)
 
     def update(self, request, *args, **kwargs):
-        permission_classes = [IsAdminUser]
-        if request.user.group == "Manager":
-            return Response(status=status.HTTP_200_OK)
+        self.permission_classes = [IsAuthenticated]
+        if request.user.groups.filter(name="Manager").exists():
+            return Response({'success': 'true', 'message': 'Please use url with id to update'},
+                            status=status.HTTP_200_OK)
         else:
-            return Response(status=status.HTTP_403_FORBIDDEN)
+            return Response({'success': 'false', 'message': 'user is not authorized to perform the action'},
+                            status=status.HTTP_403_FORBIDDEN)
 
     def partial_update(self, request, *args, **kwargs):
-        permission_classes = [IsAdminUser]
-        if request.user.group == "Manager":
-            return Response(status=status.HTTP_200_OK)
+        self.permission_classes = [IsAuthenticated]
+        if request.user.groups.filter(name="Manager").exists():
+            return Response({'success': 'true', 'message': 'Please use url with id to update'},
+                            status=status.HTTP_200_OK)
         else:
-            return Response(status=status.HTTP_403_FORBIDDEN)
+            return Response({'success': 'false', 'message': 'user is not authorized to perform the action'},
+                            status=status.HTTP_403_FORBIDDEN)
 
     def delete(self, request, *args, **kwargs):
-        permission_classes = [IsAdminUser]
-        if request.user.group == "Manager":
-            return Response(status=status.HTTP_200_OK)
+        self.permission_classes = [IsAuthenticated]
+        if request.user.groups.filter(name="Manager").exists():
+            return Response({'success': 'true', 'message': 'Please use url with id to update'},
+                            status=status.HTTP_200_OK)
         else:
-            return Response(status=status.HTTP_403_FORBIDDEN)
+            return Response({'success': 'false', 'message': 'user is not authorized to perform the action'},
+                            status=status.HTTP_403_FORBIDDEN)
 
 
 class SingleMenuItemView(generics.RetrieveUpdateDestroyAPIView):
     queryset = MenuItem.objects.all()
     serializer_class = MenuItemSerializer
+    permission_classes = []
+
+    def retrieve(self, request, *args, **kwargs):
+        self.permission_classes = []
+        pk = kwargs.get('pk')
+        item = get_object_or_404(MenuItem, pk=pk)
+        serialized_item = MenuItemSerializer(item)
+        return Response(serialized_item.data, status=status.HTTP_200_OK)
+
+    def update(self, request, *args, **kwargs):
+        self.permission_classes = [IsAuthenticated]
+        if request.user.groups.filter(name="Manager").exists():
+            pk = kwargs.get('pk')
+            item = get_object_or_404(MenuItem, pk=pk)
+            serialized_item = MenuItemSerializer(data=request.data)
+            serialized_item.is_valid(raise_exception=True)
+            serialized_item.save()
+            return Response({'success': 'true', 'message': 'new menu item updated successfully'},
+                            status=status.HTTP_201_CREATED)
+        else:
+            return Response({'success': 'false', 'message': 'user is not authorized to perform the action'},
+                            status=status.HTTP_403_FORBIDDEN)
+
+    def partial_update(self, request, *args, **kwargs):
+        self.permission_classes = [IsAuthenticated]
+        if request.user.groups.filter(name="Manager").exists():
+            return Response({'success': 'true', 'message': 'new menu item updated successfully'},
+                            status=status.HTTP_201_CREATED)
+        else:
+            return Response({'success': 'false', 'message': 'user is not authorized to perform the action'},
+                            status=status.HTTP_403_FORBIDDEN)
+
+    def delete(self, request, *args, **kwargs):
+        self.permission_classes = [IsAuthenticated]
+        if request.user.groups.filter(name="Manager").exists():
+            return Response({'success': 'true', 'message': 'menu item deleted successfully'},
+                            status=status.HTTP_201_CREATED)
+        else:
+            return Response({'success': 'false', 'message': 'user is not authorized to perform the action'},
+                            status=status.HTTP_403_FORBIDDEN)
 
 
 class CategoryView(generics.ListCreateAPIView):
