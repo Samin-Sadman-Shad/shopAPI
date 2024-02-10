@@ -50,6 +50,23 @@ class CartMenuItemUpdateSerializer(CartSerializer):
         }
 
 
+class AddToCartSerializer(serializers.ModelSerializer):
+    class Meta:
+        model=Cart
+        fields = ['menu_item_id','menu_item', 'quantity']
+        extra_kwargs = {
+            'menu_item': {'read_only': True},
+        }
+
+
+class RemoveCartSerializer(serializers.ModelSerializer):
+    class Meta:
+        model= Cart
+        fields = ['menu_item_id','menu_item']
+        extra_kwargs = {
+            'menu_item': {'read_only': True},
+        }
+
 
 class OrderSerializer(serializers.ModelSerializer):
     user_id = serializers.IntegerField(write_only=True)

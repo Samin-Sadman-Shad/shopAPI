@@ -7,7 +7,7 @@ from rest_framework.generics import get_object_or_404
 
 from shopapp.models import MenuItem, Category, OrderItem, Cart, Order
 from shopapp.serializers import MenuItemSerializer, CategorySerializer, OrderItemSerializer, CartSerializer, \
-    OrderSerializer, UserSerializer, CartMenuItemUpdateSerializer
+    OrderSerializer, UserSerializer, CartMenuItemUpdateSerializer, AddToCartSerializer, RemoveCartSerializer
 from .filters import MenuItemFilterSet
 
 from django_filters import rest_framework as filters
@@ -199,6 +199,7 @@ class SingleOrderView(generics.RetrieveUpdateDestroyAPIView):
             return Response(serialized_item.data)
         return Response(status=status.HTTP_403_FORBIDDEN)
 
+    # order id is sent by path parameter, delivery_crew is sent by body parameter
     def update(self, request, *args, **kwargs):
         if request.user.groups.filter("Manager").exists():
             pk = kwargs['pk']
@@ -210,7 +211,8 @@ class SingleOrderView(generics.RetrieveUpdateDestroyAPIView):
             delivery_crew_pk = request.data['delivery_crew']
             delivery_crew = get_object_or_404(User, pk=delivery_crew_pk)
             order.delivery_crew = delivery_crew
-            serialized_item = OrderSerializer(Order, request.data)
+            # deserialize the body parameter and order instance
+            serialized_item = OrderSerializer(order, request.data)
             serialized_item.is_valid(raise_exception=True)
             serialized_item.save()
             return Response(serialized_item.data, status=status.HTTP_201_CREATED)
@@ -236,54 +238,75 @@ class SingleOrderView(generics.RetrieveUpdateDestroyAPIView):
         return Response(status=status.HTTP_403_FORBIDDEN)
 
 
-class CartMenuItemView(generics.ListAPIView, generics.DestroyAPIView, generics.UpdateAPIView):
-    # queryset = Cart.objects.all()
+class CartMenuItemView(generics.ListAPIView, generics.DestroyAPIView, generics.CreateAPIView):
+    queryset = Cart.objects.all()
     serializer_class = CartMenuItemUpdateSerializer
 
     # permission_classes = [IsAuthenticated]
 
-    def get_queryset(self):
-        items = Cart.objects.select_related("menu_item")
-
-        return items
-        # user = self.request.user
-        # return Cart.objects.filter(user=user)
+    # def get_queryset(self):
+    #     items = Cart.objects.select_related("menu_item")
+    #     return items
+    #     # user = self.request.user
+    #     # return Cart.objects.filter(user=user)
 
     def list(self, request, *args, **kwargs):
-        queryset = self.get_queryset()
+        queryset = self.get_queryset().filter(user=request.user)
         serializer = self.get_serializer(queryset, many=True)
-
         menu_items_data = [{'menu_item': item['menu_item']} for item in serializer.data]
-
         return Response(menu_items_data)
 
-    def perform_update(self, serializer):
-        user = self.request.user
-        instance = self.get_object()
-        menu_item_id = self.request.data.get("menu_item_id")
-        menu_item = MenuItem.objects.get(id=menu_item_id)
-        quantity = self.request.data.get("quantity", 1)
-        unit_price = menu_item.price
+    # def perform_update(self, serializer):
+    #     user = self.request.user
+    #     instance = self.get_object()
+    #     menu_item_id = self.request.data.get("menu_item_id")
+    #     menu_item = MenuItem.objects.get(id=menu_item_id)
+    #     quantity = self.request.data.get("quantity", 1)
+    #     unit_price = menu_item.price
+    #     other_cart_items = Cart.objects.filter(user=user).exclude(id=serializer.instance.id)
+    #     total_price = sum(item.total_price for item in other_cart_items) + unit_price * quantity
+    #     cart_data = {
+    #         'user': user.id,
+    #         'menu_item': menu_item_id,
+    #         'quantity': quantity,
+    #         'unit_price': unit_price,
+    #         'total_price': total_price,
+    #     }
+    #     serializer.save(**cart_data)
 
-        other_cart_items = Cart.objects.filter(user=user).exclude(id=serializer.instance.id)
-        total_price = sum(item.total_price for item in other_cart_items) + unit_price * quantity
+    # all data is passed by body parameter
+    def create(self, request, *args, **kwargs):
+        if request.user.groups.count() == 0:
+            serialized_item = AddToCartSerializer(data=request.data)
+            serialized_item.is_valid(raise_exception=True)
+            menu_item_id = request.data['menu_item_id']
+            menu_item = get_object_or_404(MenuItem, pk=menu_item_id)
+            quantity = request.data['quantity']
+            price = int(quantity) * menu_item.price
+            try:
+                Cart.objects.create(user=request.user, menu_item=menu_item, quantity=quantity,
+                                    unit_price=menu_item.price, price=price)
+            except Exception as e:
+                return Response({'message': f'{e}'})
+            return Response(status=status.HTTP_201_CREATED)
+        return Response(status=status.HTTP_403_FORBIDDEN)
 
-        cart_data = {
-            'user': user.id,
-            'menu_item': menu_item_id,
-            'quantity': quantity,
-            'unit_price': unit_price,
-            'total_price': total_price,
-        }
+    def destroy(self, request, *args, **kwargs):
+        if request.user.groups.count() == 0:
+            serialized_item = RemoveCartSerializer(request.data)
+            serialized_item.is_valid(raise_exception=True)
+            menu_item = request.data['menu_item']
+            cart = get_object_or_404(Cart.objects.filter(user=request.user), menu_item=menu_item)
+            cart.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        return Response(status=status.HTTP_403_FORBIDDEN)
 
-        serializer.save(**cart_data)
-
-    def partial_update(self, request, *args, **kwargs):
-        request_data = {k: v for k, v in request.data.items() if k == 'menu_item_id'}
-        kwargs['partial'] = True
-        kwargs['data'] = request_data
-
-        return super().partial_update(request, *args, **kwargs)
+    # def partial_update(self, request, *args, **kwargs):
+    #     request_data = {k: v for k, v in request.data.items() if k == 'menu_item_id'}
+    #     kwargs['partial'] = True
+    #     kwargs['data'] = request_data
+    #
+    #     return super().partial_update(request, *args, **kwargs)
 
     # def get_serializer_class(self, *args, **kwargs):
     #     fields = ['menu_item_id']
