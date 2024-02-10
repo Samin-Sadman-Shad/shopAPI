@@ -10,6 +10,7 @@ from shopapp.serializers import MenuItemSerializer, CategorySerializer, OrderIte
     OrderSerializer, UserSerializer, CartMenuItemUpdateSerializer, AddToCartSerializer, RemoveCartSerializer, \
     ManagerOrderSerializer, CrewOrderSerializer
 from .filters import MenuItemFilterSet
+from rest_framework.throttling import UserRateThrottle, AnonRateThrottle
 
 from django_filters import rest_framework as filters
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
@@ -30,6 +31,7 @@ class MenuItemsView(generics.ListCreateAPIView, generics.UpdateAPIView, generics
     ordering_fields = ['price', 'id']
     ordering = ["price"]
     permission_classes = []
+    throttle_classes = [UserRateThrottle, AnonRateThrottle]
 
     # def checkAdmin(self, request, code: int):
     #     if request.user.group == "Manager":
@@ -88,6 +90,7 @@ class SingleMenuItemView(generics.RetrieveUpdateDestroyAPIView):
     queryset = MenuItem.objects.all()
     serializer_class = MenuItemSerializer
     permission_classes = []
+    throttle_classes = [UserRateThrottle, AnonRateThrottle]
 
     def retrieve(self, request, *args, **kwargs):
         self.permission_classes = []
@@ -152,6 +155,7 @@ class CategorySingleView(generics.RetrieveUpdateDestroyAPIView):
 class OrdersView(generics.ListCreateAPIView):
     serializer_class = OrderSerializer
     permission_classes = [IsAuthenticated]
+    throttle_classes = [UserRateThrottle, AnonRateThrottle]
 
     def get_queryset(self):
         if self.request.user.is_superuser or self.request.user.groups.filter(name="Manager").exists():
@@ -190,6 +194,7 @@ class OrdersView(generics.ListCreateAPIView):
 class SingleOrderView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = OrderSerializer
     permission_classes = [IsAuthenticated]
+    throttle_classes = [UserRateThrottle, AnonRateThrottle]
 
     def retrieve(self, request, *args, **kwargs):
         pk = kwargs['pk']
@@ -269,6 +274,7 @@ class CartMenuItemView(generics.ListAPIView, generics.DestroyAPIView, generics.C
     serializer_class = CartMenuItemUpdateSerializer
 
     permission_classes = [IsAuthenticated]
+    throttle_classes = [UserRateThrottle]
 
     # def get_queryset(self):
     #     items = Cart.objects.select_related("menu_item")
@@ -360,6 +366,7 @@ class ManagerGroupUserView(generics.ListCreateAPIView):
     queryset = User.objects.all()
     permission_classes = [IsAuthenticated]
     serializer_class = UserSerializer
+    throttle_classes = [UserRateThrottle]
 
     def list(self, request, *args, **kwargs):
         if request.user.groups.filter(name='Manager').exists():
@@ -385,6 +392,7 @@ class ManagerGroupUserView(generics.ListCreateAPIView):
 class ManagerGroupSingleUserView(generics.DestroyAPIView):
     queryset = User.objects.all()
     permission_classes = [IsAuthenticated]
+    throttle_classes = [UserRateThrottle]
 
     def destroy(self, request, *args, **kwargs):
         if request.user.groups.filter(name='Manager').exists():
@@ -400,12 +408,14 @@ class ManagerGroupSingleUserView(generics.DestroyAPIView):
 class DeliveryCrewGroupView(generics.ListCreateAPIView):
     queryset = User.objects.all()
     permission_classes = [IsAuthenticated]
+    throttle_classes = [UserRateThrottle]
 
     def list(self, request, *args, **kwargs):
         if request.user.groups.filter(name='Manager').exists():
             crew_group = Group.objects.get(name='Delivery crew')
             crews = User.objects.filter(groups=crew_group)
-            return Response(crews.data, status=status.HTTP_200_OK)
+            serialized_item = UserSerializer(crews, many=True)
+            return Response(serialized_item.data, status=status.HTTP_200_OK)
         return Response(status=status.HTTP_403_FORBIDDEN)
 
     def create(self, request, *args, **kwargs):
@@ -416,7 +426,7 @@ class DeliveryCrewGroupView(generics.ListCreateAPIView):
                 crew_group = Group.objects.get(name='Delivery crew')
                 if crew_group:
                     crew_group.user_set.add(user)
-                    return Response(user.data, status=status.HTTP_201_CREATED)
+                    return Response( status=status.HTTP_201_CREATED)
             return Response(status=status.HTTP_400_BAD_REQUEST)
         return Response(status=status.HTTP_403_FORBIDDEN)
 
@@ -424,11 +434,12 @@ class DeliveryCrewGroupView(generics.ListCreateAPIView):
 class DeliveryCrewGroupSingleView(generics.DestroyAPIView):
     queryset = User.objects.all()
     permission_classes = [IsAuthenticated]
+    throttle_classes = [UserRateThrottle]
 
 
     def destroy(self, request, *args, **kwargs):
         if request.user.groups.filter(name='Manager').exists():
-            pk = kwargs['user_id']
+            pk = kwargs['pk']
             user = get_object_or_404(User, id=pk)
             crew_group = Group.objects.get(name="Delivery crew")
             if crew_group:
