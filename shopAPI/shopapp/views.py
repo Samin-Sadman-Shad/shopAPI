@@ -48,8 +48,9 @@ class MenuItemsView(generics.ListCreateAPIView, generics.UpdateAPIView, generics
             serialized_item = MenuItemSerializer(data=request.data)
             serialized_item.is_valid(raise_exception=True)
             serialized_item.save()
-            return Response({'success': 'true', 'message': 'new menu item created successfully', 'data':serialized_item.data},
-                            status=status.HTTP_201_CREATED)
+            return Response(
+                {'success': 'true', 'message': 'new menu item created successfully', 'data': serialized_item.data},
+                status=status.HTTP_201_CREATED)
         else:
             return Response({'success': 'false', 'message': 'user is not authorized to perform the action'},
                             status=status.HTTP_403_FORBIDDEN)
@@ -102,8 +103,9 @@ class SingleMenuItemView(generics.RetrieveUpdateDestroyAPIView):
             serialized_item = MenuItemSerializer(item, data=request.data)
             serialized_item.is_valid(raise_exception=True)
             serialized_item.save()
-            return Response({'success': 'true', 'message': 'new menu item updated successfully', 'data': serialized_item.data},
-                            status=status.HTTP_200_OK)
+            return Response(
+                {'success': 'true', 'message': 'new menu item updated successfully', 'data': serialized_item.data},
+                status=status.HTTP_200_OK)
         else:
             return Response({'success': 'false', 'message': 'user is not authorized to perform the action'},
                             status=status.HTTP_403_FORBIDDEN)
@@ -116,8 +118,9 @@ class SingleMenuItemView(generics.RetrieveUpdateDestroyAPIView):
             serialized_item = MenuItemSerializer(item, data=request.data, partial=True)
             serialized_item.is_valid(raise_exception=True)
             serialized_item.save()
-            return Response({'success': 'true', 'message': 'new menu item updated successfully', 'data':serialized_item.data},
-                            status=status.HTTP_200_OK)
+            return Response(
+                {'success': 'true', 'message': 'new menu item updated successfully', 'data': serialized_item.data},
+                status=status.HTTP_200_OK)
         else:
             return Response({'success': 'false', 'message': 'user is not authorized to perform the action'},
                             status=status.HTTP_403_FORBIDDEN)
@@ -162,20 +165,19 @@ class OrdersView(generics.ListCreateAPIView):
         if not request.user.groups.count() == 0:
             cart_items = Cart.objects.filter(user=request.user)
             total = self.calculate_total(cart_items)
-            order = Order.objects.create(user=request.user, status=False, total_price= total, date=date.today())
-            #place every cart item to order item, and remove the card item
+            order = Order.objects.create(user=request.user, status=False, total_price=total, date=date.today())
+            # place every cart item to order item, and remove the card item
             for cart_item in cart_items.values():
                 menu_item = get_object_or_404(MenuItem, id=cart_item['menu_item_id'])
                 order_item = OrderItem.objects.create(order=order, menu_item=menu_item, quantity=cart_item['quantity'],
-                                                      unit_price=cart_item['unit_price'], total_price=cart_item['total_price'])
+                                                      unit_price=cart_item['unit_price'],
+                                                      total_price=cart_item['total_price'])
                 order_item.save()
             cart_items.delete()
             return Response({'success': 'true',
-                              'message':'Your order has been placed with {} order number'.format(str(order.id))},
+                             'message': 'Your order has been placed with {} order number'.format(str(order.id))},
                             status=status.HTTP_201_CREATED)
         return Response(status=status.HTTP_403_FORBIDDEN)
-
-
 
     def calculate_total(self, cart_items):
         total = Decimal(0)
@@ -188,7 +190,6 @@ class SingleOrderView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = OrderSerializer
     permission_classes = [IsAuthenticated]
 
-
     def retrieve(self, request, *args, **kwargs):
         pk = kwargs['pk']
         order = Order.objects.get(pk=pk)
@@ -198,12 +199,13 @@ class SingleOrderView(generics.RetrieveUpdateDestroyAPIView):
             return Response(serialized_item.data)
         return Response(status=status.HTTP_403_FORBIDDEN)
 
-
     def update(self, request, *args, **kwargs):
         if request.user.groups.filter("Manager").exists():
             pk = kwargs['pk']
-            #order = Order.objects.get(pk=pk)
+            # order = Order.objects.get(pk=pk)
             order = get_object_or_404(Order, pk=pk)
+            # if not order.status:
+            #     order.status = True
             order.status = not order.status
             delivery_crew_pk = request.data['delivery_crew']
             delivery_crew = get_object_or_404(User, pk=delivery_crew_pk)
@@ -212,9 +214,26 @@ class SingleOrderView(generics.RetrieveUpdateDestroyAPIView):
             serialized_item.is_valid(raise_exception=True)
             serialized_item.save()
             return Response(serialized_item.data, status=status.HTTP_201_CREATED)
-        elif request.user.groups.filter("Deliver crew").exists():
-            pass
+        return Response(status=status.HTTP_403_FORBIDDEN)
 
+    def partial_update(self, request, *args, **kwargs):
+        if request.user.groups.filter("Deliver crew").exists():
+            pk = kwargs['pk']
+            # order = Order.objects.get(pk=pk)
+            order = get_object_or_404(Order, pk=pk)
+            # if not order.status:
+            #     order.status = True
+            order.status = not order.status
+            order.save()
+            return Response(status=status.HTTP_200_OK)
+
+    def destroy(self, request, *args, **kwargs):
+        if request.user.groups.filter('Manager').exists():
+            pk = kwargs['pk']
+            order = get_object_or_404(Order, pk=pk)
+            order.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        return Response(status=status.HTTP_403_FORBIDDEN)
 
 
 class CartMenuItemView(generics.ListAPIView, generics.DestroyAPIView, generics.UpdateAPIView):
