@@ -7,7 +7,8 @@ from rest_framework.generics import get_object_or_404
 
 from shopapp.models import MenuItem, Category, OrderItem, Cart, Order
 from shopapp.serializers import MenuItemSerializer, CategorySerializer, OrderItemSerializer, CartSerializer, \
-    OrderSerializer, UserSerializer, CartMenuItemUpdateSerializer, AddToCartSerializer, RemoveCartSerializer
+    OrderSerializer, UserSerializer, CartMenuItemUpdateSerializer, AddToCartSerializer, RemoveCartSerializer, \
+    ManagerOrderSerializer, CrewOrderSerializer
 from .filters import MenuItemFilterSet
 
 from django_filters import rest_framework as filters
@@ -153,16 +154,16 @@ class OrdersView(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        if self.request.user.is_superuser or self.request.groups.filter(name="Manager").exists():
-            query = OrderItem.objects.all()
+        if self.request.user.is_superuser or self.request.user.groups.filter(name="Manager").exists():
+            query = Order.objects.all()
         elif self.request.user.groups.filter(name="Delivery crew").exists():
-            query = OrderItem.objects.filter(delivery_crew=self.request.user)
+            query = Order.objects.filter(delivery_crew=self.request.user)
         else:
-            query = OrderItem.objects.filter(user=self.request.user)
+            query = Order.objects.filter(user=self.request.user)
         return query
 
     def create(self, request, *args, **kwargs):
-        if not request.user.groups.count() == 0:
+        if request.user.groups.count() == 0:
             cart_items = Cart.objects.filter(user=request.user)
             total = self.calculate_total(cart_items)
             order = Order.objects.create(user=request.user, status=False, total_price=total, date=date.today())
@@ -182,7 +183,7 @@ class OrdersView(generics.ListCreateAPIView):
     def calculate_total(self, cart_items):
         total = Decimal(0)
         for item in cart_items:
-            total += item.price
+            total += item.total_price
         return total
 
 
@@ -201,33 +202,58 @@ class SingleOrderView(generics.RetrieveUpdateDestroyAPIView):
 
     # order id is sent by path parameter, delivery_crew is sent by body parameter
     def update(self, request, *args, **kwargs):
-        if request.user.groups.filter("Manager").exists():
+        if request.user.groups.filter(name="Manager").exists():
             pk = kwargs['pk']
             # order = Order.objects.get(pk=pk)
             order = get_object_or_404(Order, pk=pk)
             # if not order.status:
             #     order.status = True
-            order.status = not order.status
-            delivery_crew_pk = request.data['delivery_crew']
+            #order.status = not order.status
+            deliver_status = request.data['status']
+            order.status = bool(deliver_status)
+            delivery_crew_pk = request.data['delivery_crew_id']
             delivery_crew = get_object_or_404(User, pk=delivery_crew_pk)
             order.delivery_crew = delivery_crew
             # deserialize the body parameter and order instance
-            serialized_item = OrderSerializer(order, request.data)
+            serialized_item = ManagerOrderSerializer(order, request.data)
             serialized_item.is_valid(raise_exception=True)
             serialized_item.save()
             return Response(serialized_item.data, status=status.HTTP_201_CREATED)
         return Response(status=status.HTTP_403_FORBIDDEN)
 
     def partial_update(self, request, *args, **kwargs):
-        if request.user.groups.filter("Deliver crew").exists():
+        if request.user.groups.filter(name="Deliver crew").exists():
             pk = kwargs['pk']
             # order = Order.objects.get(pk=pk)
             order = get_object_or_404(Order, pk=pk)
             # if not order.status:
             #     order.status = True
-            order.status = not order.status
-            order.save()
-            return Response(status=status.HTTP_200_OK)
+            # order.status = not order.status
+            deliver_status = request.data['status']
+            order.status = bool(deliver_status)
+            # order.save()
+            serialized_item = CrewOrderSerializer(order, request.data)
+            serialized_item.is_valid(raise_exception=True)
+            serialized_item.save()
+            return Response(serialized_item.data,status=status.HTTP_200_OK)
+        elif request.user.groups.filter(name="Manager").exists():
+            pk = kwargs['pk']
+            # order = Order.objects.get(pk=pk)
+            order = get_object_or_404(Order, pk=pk)
+            # if not order.status:
+            #     order.status = True
+            #order.status = not order.status
+            deliver_status = request.data['status']
+            order.status = bool(deliver_status)
+            delivery_crew_pk = request.data['delivery_crew_id']
+            delivery_crew = get_object_or_404(User, pk=delivery_crew_pk)
+            order.delivery_crew = delivery_crew
+            # deserialize the body parameter and order instance
+            serialized_item = ManagerOrderSerializer(order, request.data)
+            serialized_item.is_valid(raise_exception=True)
+            serialized_item.save()
+            return Response(serialized_item.data, status=status.HTTP_201_CREATED)
+        return Response(status=status.HTTP_403_FORBIDDEN)
 
     def destroy(self, request, *args, **kwargs):
         if request.user.groups.filter('Manager').exists():
@@ -242,7 +268,7 @@ class CartMenuItemView(generics.ListAPIView, generics.DestroyAPIView, generics.C
     queryset = Cart.objects.all()
     serializer_class = CartMenuItemUpdateSerializer
 
-    # permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated]
 
     # def get_queryset(self):
     #     items = Cart.objects.select_related("menu_item")
@@ -285,10 +311,10 @@ class CartMenuItemView(generics.ListAPIView, generics.DestroyAPIView, generics.C
             price = int(quantity) * menu_item.price
             try:
                 Cart.objects.create(user=request.user, menu_item=menu_item, quantity=quantity,
-                                    unit_price=menu_item.price, price=price)
+                                    unit_price=menu_item.price, total_price=price)
+                return Response(status=status.HTTP_201_CREATED)
             except Exception as e:
-                return Response({'message': f'{e}'})
-            return Response(status=status.HTTP_201_CREATED)
+                return Response({'message': f'{e}'}, status=status.HTTP_400_BAD_REQUEST)
         return Response(status=status.HTTP_403_FORBIDDEN)
 
     def destroy(self, request, *args, **kwargs):

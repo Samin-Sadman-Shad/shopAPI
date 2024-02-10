@@ -14,7 +14,6 @@ class MenuItemSerializer(serializers.ModelSerializer):
     category_id = serializers.IntegerField(write_only=True)
     category = CategorySerializer(read_only=True)
 
-
     class Meta:
         model = MenuItem
         fields = ['id', 'title', 'price', 'featured', 'category', 'category_id']
@@ -40,20 +39,20 @@ class CartSerializer(serializers.ModelSerializer):
 class CartMenuItemUpdateSerializer(CartSerializer):
     class Meta(CartSerializer.Meta):
         model = Cart
-        extra_kwargs:{
+        extra_kwargs: {
             'user_id': {'read_only': True},
-            'user' : {'read_only': True},
-            'menu_item' : {'read_only': True},
-            'quantity' : {'read_only': True},
-            'unit_price' : {'read_only': True},
-            'total_price' : {'read_only': True}
+            'user': {'read_only': True},
+            'menu_item': {'read_only': True},
+            'quantity': {'read_only': True},
+            'unit_price': {'read_only': True},
+            'total_price': {'read_only': True}
         }
 
 
 class AddToCartSerializer(serializers.ModelSerializer):
     class Meta:
-        model=Cart
-        fields = ['menu_item_id','menu_item', 'quantity']
+        model = Cart
+        fields = ['menu_item_id', 'menu_item', 'quantity']
         extra_kwargs = {
             'menu_item': {'read_only': True},
         }
@@ -61,8 +60,8 @@ class AddToCartSerializer(serializers.ModelSerializer):
 
 class RemoveCartSerializer(serializers.ModelSerializer):
     class Meta:
-        model= Cart
-        fields = ['menu_item_id','menu_item']
+        model = Cart
+        fields = ['menu_item_id', 'menu_item']
         extra_kwargs = {
             'menu_item': {'read_only': True},
         }
@@ -70,13 +69,32 @@ class RemoveCartSerializer(serializers.ModelSerializer):
 
 class OrderSerializer(serializers.ModelSerializer):
     user_id = serializers.IntegerField(write_only=True)
-    user = UserSerializer(read_only=True, source='user')
+    user = UserSerializer(read_only=True)
     delivery_crew_id = serializers.IntegerField(write_only=True)
-    delivery_crew = UserSerializer(read_only=True, source='delivery_crew', allow_null=True)
+    delivery_crew = UserSerializer(read_only=True, allow_null=True)
 
     class Meta:
         model = Order
-        fields = ['id', 'user_id', 'user', 'delivery_crew', 'status', 'total_price', 'date', 'user_id', 'delivery_crew_id']
+        fields = ['id', 'user_id', 'user', 'delivery_crew', 'status', 'total_price', 'date', 'user_id',
+                  'delivery_crew_id']
+
+
+class ManagerOrderSerializer(serializers.ModelSerializer):
+    delivery_crew_id = serializers.IntegerField(write_only=True)
+    delivery_crew = UserSerializer(read_only=True, allow_null=True)
+
+    class Meta:
+        model = Order
+        fields = ['delivery_crew_id', 'delivery_crew', 'status']
+        # A manager can set a delivery crew to this order,
+        # and update the order status to 0 or 1
+
+
+class CrewOrderSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Order
+        fields = ['status']
+        # The delivery crew will not be able to update anything else in this order.
 
 
 class OrderItemSerializer(serializers.ModelSerializer):
