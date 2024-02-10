@@ -208,7 +208,7 @@ class SingleOrderView(generics.RetrieveUpdateDestroyAPIView):
             order = get_object_or_404(Order, pk=pk)
             # if not order.status:
             #     order.status = True
-            #order.status = not order.status
+            # order.status = not order.status
             deliver_status = request.data['status']
             order.status = bool(deliver_status)
             delivery_crew_pk = request.data['delivery_crew_id']
@@ -235,14 +235,14 @@ class SingleOrderView(generics.RetrieveUpdateDestroyAPIView):
             serialized_item = CrewOrderSerializer(order, request.data)
             serialized_item.is_valid(raise_exception=True)
             serialized_item.save()
-            return Response(serialized_item.data,status=status.HTTP_200_OK)
+            return Response(serialized_item.data, status=status.HTTP_200_OK)
         elif request.user.groups.filter(name="Manager").exists():
             pk = kwargs['pk']
             # order = Order.objects.get(pk=pk)
             order = get_object_or_404(Order, pk=pk)
             # if not order.status:
             #     order.status = True
-            #order.status = not order.status
+            # order.status = not order.status
             deliver_status = request.data['status']
             order.status = bool(deliver_status)
             delivery_crew_pk = request.data['delivery_crew_id']
@@ -354,3 +354,84 @@ class ManagerView(generics.ListCreateAPIView):
 
 class ManagerRemoveUserView(generics.DestroyAPIView):
     pass
+
+
+class ManagerGroupUserView(generics.ListCreateAPIView):
+    queryset = User.objects.all()
+    permission_classes = [IsAuthenticated]
+    serializer_class = UserSerializer
+
+    def list(self, request, *args, **kwargs):
+        if request.user.groups.filter(name='Manager').exists():
+            manager_group = Group.objects.get(name='Manager')
+            managers = User.objects.filter(groups=manager_group)
+            serialized_item = UserSerializer(managers, many=True)
+            return Response(serialized_item.data, status=status.HTTP_200_OK)
+        return Response(status=status.HTTP_403_FORBIDDEN)
+
+    def create(self, request, *args, **kwargs):
+        if request.user.groups.filter(name='Manager').exists():
+            username = request.data['username']
+            if username:
+                user = get_object_or_404(User, username=username)
+                manager_group = Group.objects.get(name="Manager")
+                if manager_group:
+                    manager_group.user_set.add(user)
+                    return Response( status=status.HTTP_201_CREATED)
+            return Response(status=status.HTTP_400_BAD_REQUEST)
+        return Response(status=status.HTTP_403_FORBIDDEN)
+
+
+class ManagerGroupSingleUserView(generics.DestroyAPIView):
+    queryset = User.objects.all()
+    permission_classes = [IsAuthenticated]
+
+    def destroy(self, request, *args, **kwargs):
+        if request.user.groups.filter(name='Manager').exists():
+            pk = kwargs['user_id']
+            user = get_object_or_404(User, id=pk)
+            manager_group = Group.objects.get(name="Manager")
+            if manager_group:
+                manager_group.user_set.remove(user)
+                return Response(status=status.HTTP_200_OK)
+        return Response(status=status.HTTP_403_FORBIDDEN)
+
+
+class DeliveryCrewGroupView(generics.ListCreateAPIView):
+    queryset = User.objects.all()
+    permission_classes = [IsAuthenticated]
+
+    def list(self, request, *args, **kwargs):
+        if request.user.groups.filter(name='Manager').exists():
+            crew_group = Group.objects.get(name='Delivery crew')
+            crews = User.objects.filter(groups=crew_group)
+            return Response(crews.data, status=status.HTTP_200_OK)
+        return Response(status=status.HTTP_403_FORBIDDEN)
+
+    def create(self, request, *args, **kwargs):
+        if request.user.groups.filter(name='Manager').exists():
+            username = request.data['username']
+            if username:
+                user = get_object_or_404(User, username=username)
+                crew_group = Group.objects.get(name='Delivery crew')
+                if crew_group:
+                    crew_group.user_set.add(user)
+                    return Response(user.data, status=status.HTTP_201_CREATED)
+            return Response(status=status.HTTP_400_BAD_REQUEST)
+        return Response(status=status.HTTP_403_FORBIDDEN)
+
+
+class DeliveryCrewGroupSingleView(generics.DestroyAPIView):
+    queryset = User.objects.all()
+    permission_classes = [IsAuthenticated]
+
+
+    def destroy(self, request, *args, **kwargs):
+        if request.user.groups.filter(name='Manager').exists():
+            pk = kwargs['user_id']
+            user = get_object_or_404(User, id=pk)
+            crew_group = Group.objects.get(name="Delivery crew")
+            if crew_group:
+                crew_group.user_set.remove(user)
+                return Response(status=status.HTTP_200_OK)
+        return Response(status=status.HTTP_403_FORBIDDEN)
