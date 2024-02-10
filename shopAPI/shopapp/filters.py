@@ -11,3 +11,10 @@ class MenuItemFilterSet(filters.FilterSet):
     class Meta:
         model = MenuItem
         fields = ['price', 'category', 'title']
+
+
+class OrderFilterSet(filters.FilterSet):
+    min_price = filters.NumberFilter(field_name='total_price', lookup_expr='gte')
+    max_price = filters.NumberFilter(field_name='total_price', lookup_expr='lte')
+    min_date = filters.NumberFilter(field_name='date', lookup_expr='gte')
+    max_date = filters.NumberFilter(field_name='date', lookup_expr='lte')

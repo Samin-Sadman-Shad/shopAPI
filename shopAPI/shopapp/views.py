@@ -9,7 +9,7 @@ from shopapp.models import MenuItem, Category, OrderItem, Cart, Order
 from shopapp.serializers import MenuItemSerializer, CategorySerializer, OrderItemSerializer, CartSerializer, \
     OrderSerializer, UserSerializer, CartMenuItemUpdateSerializer, AddToCartSerializer, RemoveCartSerializer, \
     ManagerOrderSerializer, CrewOrderSerializer
-from .filters import MenuItemFilterSet
+from .filters import MenuItemFilterSet, OrderFilterSet
 from rest_framework.throttling import UserRateThrottle, AnonRateThrottle
 
 from django_filters import rest_framework as filters
@@ -156,6 +156,8 @@ class OrdersView(generics.ListCreateAPIView):
     serializer_class = OrderSerializer
     permission_classes = [IsAuthenticated]
     throttle_classes = [UserRateThrottle, AnonRateThrottle]
+    filterset_class = OrderFilterSet
+    ordering_fields = ['total_price', 'date']
 
     def get_queryset(self):
         if self.request.user.is_superuser or self.request.user.groups.filter(name="Manager").exists():
