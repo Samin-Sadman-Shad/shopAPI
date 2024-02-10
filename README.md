@@ -1,28 +1,32 @@
 # shopAPI
 Services
 Manager:
- The manager can assign users to the manager group
- User can access the manager group with an admin token
- The manager can add shopping items
- The manager can add categories for shopping items
- Managers can log in
- Managers can update the item of the day(Featured item)
- Managers can assign users as the delivery crew
- Managers can assign orders placed by customers to the delivery crew
+
+The manager can assign users to the manager group.
+Users can access the manager group with an admin token.
+The manager can add shopping items.
+The manager can add categories for shopping items.
+Managers can log in.
+Managers can update the item of the day (Featured item).
+Managers can assign users as the delivery crew.
+Managers can assign orders placed by customers to the delivery crew.
 Customer:
- Customers can log in using their username and password and get JWT access tokens to register
- Customers can browse all categories
- Customers can browse all the shopping items at once
- Customers can browse shopping items by category, price and title of the item
- Customers can paginate menu items, categories
- Customers can sort items by price
- Customers can add menu items to the cart
- Customers can access previously added items in the cart
- Customers can place orders 
- Customers can browse their own orders
+
+Customers can log in using their username and password and get JWT access tokens to register.
+Customers can browse all categories.
+Customers can browse all the shopping items at once.
+Customers can browse shopping items by category, price, and title of the item.
+Customers can paginate menu items, categories.
+Customers can sort items by price.
+Customers can add menu items to the cart.
+Customers can access previously added items in the cart.
+Customers can place orders.
+Customers can browse their own orders.
 Delivery Crew:
- The delivery crew can access orders assigned to them
- The delivery crew can update an order as delivered
+
+The delivery crew can access orders assigned to them.
+The delivery crew can update an order as delivered.
+
 
 Api Endpoints for consumption:
 User registration and token generation endpoints
